@@ -117,9 +117,10 @@ def backtest(signal, actual_price_series, plot_title="", debug = False, plot_ind
     portfolio_prices = aligned_signal * actual_price_series
         
     # Calculate returns on the signal
-#    returns_1 = portfolio_prices.diff()
+#    returns = portfolio_prices.diff()
     
     returns = (actual_price_series.diff() * aligned_signal)   #.rename("Cumulative Returns")
+    returns["overall"] = returns.sum(axis=1)
 
         
     overall_return = returns.sum()
@@ -141,13 +142,13 @@ def backtest(signal, actual_price_series, plot_title="", debug = False, plot_ind
             
             else:
                 returns[ccy].cumsum().plot()
-                returns[ccy].plot()
+#                returns[ccy].plot()
         
             plt.title("{0} => sharpe: {1}".format(ccy, sharpe[ccy]))
             plt.legend()
             plt.savefig("{0}.png".format(ccy))
     
-         
+
 
 # Due to a lack of data, we will use an expanding window with a minimum window size of 3months to do out of sample testing
 ccy = "EUR"
@@ -173,6 +174,12 @@ for ccy in investigated_ccys:
     forecasted_return = []
     dates = []
     
+#    plt.figure()
+#    plt.title("Out of Sample Test for {0}".format(ccy) )
+#    plt.ylabel("Change in real exchange rates after 3 months (normalised)")
+#    plt.xlabel("Real exchange rates (normalised)")
+#    
+    
     for window_end_date in ending_date_array:
         
         windowed_RER = RER[:window_end_date - pd.Timedelta(weeks=1)]
@@ -188,13 +195,17 @@ for ccy in investigated_ccys:
         
         Y_pred = linear_regressor.predict(np.array([[RER[window_end_date]]]))  # make predictions
         
+#        Y_pred = linear_regressor.predict(RER[:window_end_date].values.reshape(-1,1))  # make predictions
+        
         forecasted_spot.append( combined[ccy].iloc[-1] - Y_pred[0][0] )
         forecasted_return.append(-Y_pred[0][0])
         
         dates.append(window_end_date)
         
-    #    plt.scatter(windowed_RER, diff)
-    #    plt.scatter([RER[window_end_date]], Y_pred, color='red')
+        
+#        plt.scatter(windowed_RER, diff)
+#        plt.plot(RER[:window_end_date], Y_pred, color='red')
+#        plt.savefig("oostest_{0}".format(ccy))
     
     
 #    forecasted_df.index = dates
@@ -225,7 +236,7 @@ spots = spots.align(combined_signal, join='right')[0]
 
 cov = spots.ewm(halflife=6, min_periods = 6).std()   # Use shrinkage = 1 (i.e. ignore covariance)
 MVO_optimised = combined_signal / cov
-MVO_optimised.plot()
+#MVO_optimised.plot()
 
 backtest(MVO_optimised, spots, plot_title=ccy, debug=False, plot_individual=True)
 
@@ -233,7 +244,6 @@ backtest(MVO_optimised, spots, plot_title=ccy, debug=False, plot_individual=True
 
 
 # Perform a mean variance optimisation
-#RERs = pd.concat([get_RER(ccy, monthly=True) for ccy in investigated_ccys], axis=1, sort=True).dropna()
 #
 #cov = RERs.ewm(halflife=6, min_periods = 12).std()
 #
