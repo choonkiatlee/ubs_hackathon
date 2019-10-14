@@ -121,8 +121,21 @@ G10_country_codes = ["AUS","CAN","CHE","DEU","GBR","JPN","NOR","NZL","SWE","USA"
 
 FX_spot_filename = "FX_spot.csv"
 CPI_filename     = "CPI.csv"
+FUT_filename     = "FX_FUT.csv"
 
 if __name__ == "__main__":
-    spot_df = get_historical_price([ CCY + "=" for CCY in G10_ccys], "1970-11-01", "2018-10-31", fields="BID, ASK")
-    spot_df.to_csv(FX_spot_filename)
-
+#    spot_df = get_historical_price([ CCY + "=" for CCY in G10_ccys], "2016-11-01", "2019-06-30", fields="BID, ASK")
+#    
+#    spot_df["GBP"] = 1/ spot_df["GBP"]
+#    spot_df["EUR"] = 1/spot_df["EUR"]
+#    
+#    spot_df.to_csv(FX_spot_filename)
+    
+    fut_df = get_historical_price([ CCY + "3MV=" for CCY in G10_ccys], "2016-11-01", "2019-06-30", fields="BID, ASK", debug_printing=False)
+    
+    fut_df["AUD"] = 1/fut_df["AUD"]
+    fut_df["EUR"] = 1/fut_df["EUR"]
+    fut_df["GBP"] = 1/fut_df["GBP"]
+    fut_df["NZD"] = 1/fut_df["NZD"]
+    
+    fut_df.to_csv(FUT_filename)

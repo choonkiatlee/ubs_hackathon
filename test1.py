@@ -16,7 +16,7 @@ import get_data
 import utils
 
 import statsmodels.tsa.stattools as ts
-from fbprophet import Prophet
+#from fbprophet import Prophet
 
 
 # Load FX data
@@ -75,12 +75,22 @@ for ccy in get_data.G10_ccys:
     
     RER = (RER - RER.mean()) / RER.std()
     
-    horizon = 36
+    horizon = 3
     
-    diff = RER.diff(-horizon)
+    diff = RER.diff(horizon).shift(-horizon)
     
     if not RER.empty:
-        plt.scatter(RER, diff)
+#        plt.figure()
+        plt.scatter(RER, diff, label=ccy)
+        plt.legend()
+        
+        
+plt.title("Change in real exchange rates after 3 months against normalised real exchange rate levels")
+plt.ylabel("Change in real exchange rates after 3 months (normalised)")
+plt.xlabel("Real exchange rates (normalised)")
+plt.show()
+        
+        
 
 #RER = get_RER("CAD", monthly=True)
 
