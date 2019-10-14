@@ -240,7 +240,7 @@ MVO_optimised = combined_signal / cov
 
 backtest(MVO_optimised, spots, plot_title=ccy, debug=False, plot_individual=True)
 
-
+MVO_optimised.to_csv("output.csv")
 
 
 # Perform a mean variance optimisation
