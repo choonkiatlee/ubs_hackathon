@@ -12,6 +12,7 @@ import numpy as np
 def read_timeseries(csv_file, time_col_name = "DATE"):
     df = pd.read_csv(csv_file)
     df = set_time_index(df, time_col_name)
+    df = df.sort_index()
     
     return df
 
