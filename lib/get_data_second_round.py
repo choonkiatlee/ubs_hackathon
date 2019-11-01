@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Fri Nov  1 09:57:29 2019
+
+@author: Administrator
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Wed Oct  2 14:17:23 2019
 
 @author: Administrator
@@ -62,9 +69,20 @@ def get_historical_price(rics, start_date, end_date, fields="", debug_printing=F
             if fields == "BID, ASK":
                 spot_df["CLOSE"] = ( spot_df["BID"] + spot_df["ASK"] ) / 2
                 spot_df = spot_df.drop(columns=["BID","ASK"])
+                spot_df.columns = [ric]
+                
+#                returns = spot_df.pct_change()
+#                
+#                returns = returns.where((returns < returns.mean() - returns.std() * 6)) | (returns > returns.mean() + returns.std() * 6)
+#                
+#                spot_df = spot_df.where
+                
+#                spot_df.columns = [RIC_to_CCY(ric)]
+                
+            if fields == "MID_YLD_1":
+                spot_df.columns = [ric]
+                pass
             
-            #spot_df = spot_df.add_prefix(ric + "_")
-            spot_df.columns = [RIC_to_CCY(ric)]
                
             if output_df is None:
                 output_df = spot_df
@@ -141,3 +159,7 @@ if __name__ == "__main__":
 #    fut_df["NZD"] = 1/fut_df["NZD"]
 #    
 #    fut_df.to_csv(FUT_filename)
+
+    test = get_historical_price(["SDY"],"2007-01-01","2019-07-31", fields="BID, ASK", debug_printing=False)
+    
+    

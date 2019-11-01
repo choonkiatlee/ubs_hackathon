@@ -2,6 +2,13 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
+import numpy as np
+from matplotlib import pyplot as plt
+from numpy.linalg import inv,pinv
+from scipy.optimize import minimize
+
+from lib import get_data_second_round as get_data
+
 asset_files = []
 for file in os.listdir("Data"):
     if file.endswith(".xlsx"):
@@ -11,25 +18,148 @@ for file in os.listdir("Data"):
 plt.figure
 excel = asset_files[0]
 df_main = pd.read_excel(excel, header = None, names = ["date", excel[5:-5]])
-df_main[excel[5:-5]] = (df_main[excel[5:-5]] - min(df_main[excel[5:-5]]))/max(df_main[excel[5:-5]])
+#df_main[excel[5:-5]] = (df_main[excel[5:-5]] - min(df_main[excel[5:-5]]))/max(df_main[excel[5:-5]])
 df_main.set_index("date", drop = True, inplace = True)
 
 for excels in asset_files[1:]:
     df = pd.read_excel(excels, header = None, names = ["date", excels[5:-5]])
-    df[excels[5:-5]] = (df[excels[5:-5]] - min(df[excels[5:-5]]))/max(df[excels[5:-5]])
+#    df[excels[5:-5]] = (df[excels[5:-5]] - min(df[excels[5:-5]]))/max(df[excels[5:-5]])
     df.set_index("date", drop = True, inplace = True)
     df_main = df_main.join(df, how = "outer")
 
-print(df_main)
-
-df_main.plot()
-plt.show()
+#print(df_main)
+df_main = df_main.dropna()
+#df_main.plot()
+#plt.show()
 
 #     plt.plot(df["date"], df["price"])
 #     plt.xlabel("date")
 #     plt.ylabel("price")
 #     plt.title(excel[:-5])
 # plt.show()
+
+asset_allocation = {
+        "BCOM":0.05,
+        "BXIIBUS0":0.05,
+        "dMIEF00000NUS":0.05,
+        "dMIUS00000NUS":0.2,
+        "dMIWOU0000NUS":0.15,
+        "HFRXGL":0.1,
+        "IBLUS0004":0.05,
+        "JPMECORE":0.05,
+        "JPMGABI":0.3,
+        }
+
+asset_allocation_df = pd.DataFrame(asset_allocation, index=[1])
+
+# Every day, rebalance:
+weights = df_main.asfreq('BM').copy()
+for index in df_main.asfreq('BM').columns:
+    weights[index] = asset_allocation[index] / df_main[index]
+
+weights = weights.align(df_main,join='right')[0].fillna(method='ffill')
+returns = (weights * df_main.pct_change().shift(-1) + 1)
+returns["overall"] = returns.product(axis=1)
+(returns.cumprod() * 100).plot()
+
+
+# Collect a bunch of other tickers we might want to invest in
+rics = [
+        "USDSB3L10Y=",
+        "USDSB3L5Y=",
+#        "SDY",
+        "LQD",
+#        "QED",
+        ]
+
+overlay_prices = get_data.get_historical_price(rics, 
+                                               "2007-01-01","2019-07-31", fields="BID, ASK", debug_printing=False)
+
+df_main = df_main.drop(columns="BXIIBUS0")
+
+ # risk budgeting optimization
+def calculate_portfolio_var(w,V):
+    # function that calculates portfolio risk
+    w = np.matrix(w)
+    return (w*V*w.T)[0,0]
+
+def calculate_risk_contribution(w,V):
+    # function that calculates asset contribution to total risk
+    w = np.matrix(w)
+    sigma = np.sqrt(calculate_portfolio_var(w,V))
+    # Marginal Risk Contribution
+    MRC = V*w.T
+    # Risk Contribution
+    RC = np.multiply(MRC,w.T)/sigma
+    return RC
+
+def risk_budget_objective(x,pars):
+    # calculate portfolio risk
+    V = pars[0]# covariance table
+    x_t = pars[1] # risk target in percent of portfolio risk
+    sig_p =  np.sqrt(calculate_portfolio_var(x,V)) # portfolio sigma
+    risk_target = np.asmatrix(np.multiply(sig_p,x_t))
+    asset_RC = calculate_risk_contribution(x,V)
+    J = sum(np.square(asset_RC-risk_target.T))[0,0] # sum of squared error
+    return J
+
+def total_weight_constraint(x):
+    return np.sum(x)-1.0
+
+def long_only_constraint(x):
+    return x
+
+# At the end of each month, rebalance the portfolio using
+monthly_df = df_main.asfreq('BM')
+
+adjusted_weights = []
+
+for date in monthly_df.index[4:]:
+    
+    windowed_df = df_main[date - pd.Timedelta(weeks=12):date]
+    
+    V = windowed_df.pct_change().iloc[1:].cov().values * 100000
+    w0 = np.ones(V.shape[0]) / V.shape[0]
+    
+    x_t = w0 # your risk budget percent of total portfolio risk (equal risk)
+    cons = ({'type': 'eq', 'fun': total_weight_constraint},
+    {'type': 'ineq', 'fun': long_only_constraint})
+    res= minimize(risk_budget_objective, w0, args=[V,x_t], method='SLSQP',constraints=cons, options={'disp': True})
+    w_rb = np.asmatrix(res.x)
+    
+    adjusted_weights.append(res.x)
+
+adjusted_weight_df = pd.DataFrame(adjusted_weights, columns=df_main.columns, index=monthly_df.index[4:])
+
+aligned = adjusted_weight_df.align(df_main,join='right')[0].fillna(method='ffill')
+
+returns = (aligned * df_main.pct_change().shift(0) + 1)
+returns["overall"] = returns.product(axis=1)
+(returns.cumprod() * 100).plot()
+
+returns = (weights.drop(columns="BXIIBUS0") * df_main.pct_change().shift(0) + 1)
+returns["overall"] = returns.product(axis=1)
+(returns.cumprod() * 100).plot()
+
+
+
+#from lib import get_data_second_round as get_data
+#
+#df_main = df_main.dropna()
+#
+#IR = get_data.get_historical_price(
+#        ["US10YT=RR"],
+#        "2007-01-01",
+#        "2019-07-31", 
+#        fields = "MID_YLD_1", 
+#        debug_printing=False
+#        )
+#
+#df_main["IR"] = IR
+#
+#correlations = df_main.corr()
+
+    
 
 
 

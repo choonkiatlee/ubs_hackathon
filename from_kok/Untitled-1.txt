@@ -1,0 +1,6 @@
+1100 students / faculty in this competition
+
+Use Disney Queue Links to determine how busy the parks are, which can give a good indication of the profitability of Disney theme parks, and can then regress it against quarterly earnings. Can we use it to predict demand in an economy also?
+
+Overlay as in create a portfolio B, such that the combination of portfolio A and B result in better characteristics than portfolio A
+where portfolio A is the current investor portfolio.
