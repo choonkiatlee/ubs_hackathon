@@ -1,0 +1,9 @@
+SELECT country_code FROM [bigquery-public-data:world_bank_wdi.country_series_definitions] GROUP BY country_code LIMIT 1000
+
+Country codes:
+AUS
+GBR
+NZL
+USA
+
+
