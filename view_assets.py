@@ -138,7 +138,7 @@ def risk_budget_objective(x,pars):
     risk_target = np.asmatrix(np.multiply(sig_p,x_t))
     asset_RC = calculate_risk_contribution(x,V)
     J = sum(np.square(asset_RC-risk_target.T))[0,0] # sum of squared error 
-    J = J + 0.0 * abs(x-prev_x)[:-1].sum() + 0.0 * abs(x)[:-1].sum()
+    J = J + 0.8 * abs(x-prev_x)[:-1].sum() + 0.0 * abs(x)[:-1].sum()
 
     return J
 
@@ -171,7 +171,8 @@ for date in monthly_df.index[4:]:
     
     adjusted_weights.append(res.x)
     
-adjusted_weight_df = pd.DataFrame(adjusted_weights, columns = overlay_returns.columns, index= monthly_df.index[4:])
+adjusted_weights = np.array(adjusted_weights)
+adjusted_weight_df = pd.DataFrame(adjusted_weights/adjusted_weights[:,-1,np.newaxis], columns = overlay_returns.columns, index= monthly_df.index[4:])
 
 aligned = adjusted_weight_df.align(overlay_returns,join='right')[0].fillna(method='ffill')
 
@@ -180,10 +181,23 @@ returns["overall"] = returns.product(axis=1)
 returns["original"] = portfolio_returns
 (returns.cumprod() * 100).plot()
 
-(returns.cumprod().iloc[-1])/100 / (returns.std() * np.sqrt(252))
+print("sharpe {0}".format((returns).mean() / ((returns).std() * np.sqrt(252))))
+
+adjusted_returns = (returns)
+adjusted_returns = returns.sub(df_main["BXIIBUS0"].pct_change().shift(-1), axis=0) - 1
+
+rolling = adjusted_returns.dropna().rolling(window=5*252).mean() / adjusted_returns.dropna().rolling(window=5*252).std() * np.sqrt(252)
+rolling = rolling[["overall","original"]]
+rolling.plot()
+
+
+drawdown = returns.cumprod() - returns.cumprod().expanding().max()
+
+drawdown.plot()
 
 
 adjusted_weight_df.plot()
+adjusted_weight_df.to_csv("output.csv")
 
 
 #adjusted_weight_df = pd.DataFrame(adjusted_weights, columns=df_main.columns, index=monthly_df.index[4:])
